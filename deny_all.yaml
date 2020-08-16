@@ -1,0 +1,24 @@
+##  deny all for default
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+ name: deny-all
+ namespace: default
+spec:
+  {}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+ name: deny-all
+ namespace: svc1-ns
+spec:
+  {} 
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+ name: deny-all-authz-ns
+ namespace: authz-ns
+spec:
+  {}

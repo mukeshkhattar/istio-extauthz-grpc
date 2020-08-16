@@ -1,0 +1,82 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: ext-authz-filter
+  namespace: istio-system
+spec:
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.http_connection_manager"
+            subFilter:
+              name: "envoy.router"
+    patch:
+      operation: INSERT_BEFORE
+      value: # ext_authz filter specification
+        name: envoy.ext_authz
+        config:
+          grpc_service:
+            envoy_grpc:
+              cluster_name: patched.authz.authz-ns.svc.cluster.local
+            authorizationResponse:
+              allowedUpstreamHeaders:
+                patterns:
+                - exact: set-cookie
+                - exact: authorization
+                - exact: x-custom-header-from-authz
+              allowedClientHeaders:
+                patterns:
+                - exact: set-cookie
+                - exact: authorization
+                - exact: x-custom-header-from-authz
+  - applyTo: HTTP_FILTER
+    match:
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.http_connection_manager"
+            subFilter:
+              name: "envoy.router"
+    patch:
+      operation: INSERT_BEFORE
+      value: # lua functions below are samples only. Please make sure to put validations, error handling etc. in the lua functions below.
+        name: envoy.lua
+        config:
+          inlineCode: |
+            function envoy_on_request(request_handle)
+              request_handle:logInfo('>>> LUA envoy_on_request Called')
+              local headers = request_handle:headers()
+              local authzcookie = headers:get("authorization")
+              request_handle:logInfo(authzcookie )
+              dynamic_metadata = request_handle:streamInfo():dynamicMetadata()
+              dynamic_metadata:set("envoy.lua","hook-state",authzcookie)
+            end
+            function envoy_on_response(response_handle)
+              dynamic_metadata = response_handle:streamInfo():dynamicMetadata()
+              local c = dynamic_metadata:get("envoy.lua")["hook-state"]
+              response_handle:headers():add("authorization", c)
+            end
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: ext-authz-filter-cluster-patch
+  namespace: istio-system
+spec:
+  workloadLabels:
+    app: istio-ingressgateway
+  configPatches:
+  - applyTo: CLUSTER
+    match:
+      cluster:
+        name: outbound|50051|cluster-1|authz.authz-ns.svc.cluster.local
+    patch:
+      operation: MERGE
+      value:
+        name: "patched.authz.authz-ns.svc.cluster.local"

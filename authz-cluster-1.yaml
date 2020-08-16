@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: authz-ns
+  labels:
+    istio-injection: enabled
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: authz
+  namespace: authz-ns
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: authz
+        cluster: cluster-1
+    spec:
+      serviceAccountName: authz-sa
+      containers:
+      - name: authz-container
+        image: docker.io/mukeshkhattar/ext-authz-server
+        volumeMounts:
+        - name: keyfile
+          mountPath: "/data/certs"
+          readOnly: true
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 50051
+        livenessProbe:
+          exec:
+            command: ["ls","/app/grpc_server"]
+          initialDelaySeconds: 10
+        readinessProbe:
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:50051"]
+          initialDelaySeconds: 10
+        env:
+        - name: AUTHZ_ALLOWED_USERS
+          valueFrom:
+            configMapKeyRef:
+              name: authz-config
+              key: allowedusers
+        - name: AUTHZ_SERVER_KEY_ID
+          valueFrom:
+            configMapKeyRef:
+              name: authz-config
+              key: authzserverkeyid
+        - name: AUTHZ_ISSUER
+          valueFrom:
+            configMapKeyRef:
+              name: authz-config
+              key: authzissuer
+      volumes:
+      - name: keyfile
+        secret:
+          secretName: svc-secret
+---
+apiVersion: v1
+data:
+  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBbkptaGtHRlI0TUhNU2JFVFpTNEw5TTlwN1I3OVpVdU4zTTFNaEo2NzNYUzJsek1hCkYwYmpoNHRJejIrVFNFbm5rbmREWUFybWZrajI5N0xXZ00yc3EycUdsclpPM3o1Z1dBMmRFNldwTW1xQ3F6MUsKMXZENUpWRG0xNlR6Ukd5eFlEM0xMODJMaXVITGJyZUtCcE00L3BzMm41eiszaGxHZjlFRncyVlJCN1hnYzQzbgpxbFJYZDRtRXRkalBHSm5xVGhVVmxKeSsyejZwY2VDNEVaMlhka3d5MlJGTzJnZDZTeHRtS0xuYSs4VUpvelA2CndEUzdWUTREYk40MEpYMlpkMWFPNkxhNWZBRGF3eDdZczFqVzhmam1hTDVoSWlKNTVlYUVuQVR3cWh5QngxOGIKRU0wSFhpMnMyRUw3TnhCc3hsMXBzdkdLeWhhekZjWkt1cXROaHdJREFRQUJBb0lCQUJxOVZ1dVcyb3JFdkxQRwpremUvSlpaL1JpaVJscFlSMFI3blJVNE41cWs1VVNZL09SREpiM2VKRG4weElaYUIzQk5UM3dMS3liRzlsc0lUCjNQR3diTy8yS0JZYStodS9oR2IwcUNJZk11VmpiMzE2NFVrVGE0OTJJWHluODB2M1BWQmdMTTQwVEVRQ0t5RDAKSVJMZlY2ZU43RVZUNHVjY3JMK05ldXp5NDJPcjQ1bFdTeUQ0eVNJaDJlTlFCWU5yZ1gvMjlFT0VNbExiZnhMMgpndjV1VzU3bjhzWExjemNMbjY0Rnludmh5Y3pTN3RWaloyM2V3cE1SbmJyUHMxOVlKdzZ3bmpqUU9aZW5Ka25ECk1iUk1EZm5LbmRDclpQUGwreW9IMlc1TTJuQzNYYjdxZVlCZGFpckVZUVdBMU5FZVlxSE91ei84STF0YVBWdDYKZjg3UWdLVUNnWUVBMkpMOEZUbTZ3blI4c3I3YVQzK1Z6eEJzSjdiUk1BSGpsTnVDNzFxdVA5SnkxWEs5S1piZApWTFlFd3VucjY0N05JSW9aK0FRdWREL012cEJxTTkvVDI2ZHczYllFSzBCSUJld2ZlOWNLRUtlblUxTVJwVHAxCkpFVk5QWXhxRlV5Unc3RGhXQmZsdEVYM3ZKeElYa21pMENuMEk2aStQNFVNR0tPa1RCWjN3WVVDZ1lFQXVSdXMKYzN3VEVNbVB5YmJOK3pOM2M2ak5vUjNDUmhiRm9TYzY2T1JLaEFESWtjSXlJTDZOa0NrdU1GM21ISkhvb0JwagpnWG5IK1lNMzJUU3RtWm5rMkdNR0UzRmtVZWtlNVg3NERlL0s2R3oyaTl4T21CNlBOMURPRnNiT0kvOHhLNWRvCk1OLzRXQkRwZW5meEZzcStJYWdVMWI3UU1rbnBjMHlQdEQxZE9wc0NnWUFNM3hkNlQzY0pEWkZIc2s0WlFYVHUKM0lRQkREMThnL0E1clo0bmlaVW5sK05aU2p0eDJGU0pMMVF6SFdIM0d3S1g5MzA1bjAzL2ZMYzNjQy9QcTNMVQo4Q3VtRWFaSHg4ZEFDdHVJS2F5Z2RzWmNEbWpURUJsY01YNDR0VHFzejJNdVpUblBXWVErWlpZbXNJY2dpM0hRCnUxMldMUFk1b2plbzB6ajFpTFJQWFFLQmdDMDJKQ1hFelVkUlk4eEoyUCtjNzNVUmFzQUthN1FBeGQ1NW5YcmEKbjVTa09GalpqTExRdC9UWkNnNElNVGNUTURWQ25NRTRCRzdkN05zaGNiRk5sRWFCMFM4WWgvODFxRFUza05DZQptL211KzN6bm4wNnFVQ0tibXVxWFBpd3VuVXpmV3pSc3o5UjZ0UHdUcFpBQ2p2UGJnTk5BR3N2ZG42Wm9zY1M5CkpETTNBb0dCQUtzbWpzOTFsc3pUNFQwVGMzOHdEd3cvdkt4bnZsL1dlV2IyY1JKNFU4eEJyVy9KOVVSb3dkQkIKNmgzSE02T3JOZkVBa3BmWi8yMm1WWWxvcThKWUtONzhpQ1c4clVzbnMxUE14Y29mSkhpcFoxSWN1akE0cldySgpESUY3K2x3RU8rZ1JVbHpHQU5MSGN3dERlL3Bvek5jRkpGTUZvRFkvUCtuaFRqS0RwNGpaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+kind: Secret
+metadata:
+  name: svc-secret
+  namespace: authz-ns
+type: Opaque
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authz-config
+  namespace: authz-ns
+data:
+  allowedusers: "user1,user2,user3"
+  authzserverkeyid: "969e7bc5688c0be1a95b4704c22e97d4d5e5244c"
+  authzissuer: "ext-authz-server@amex-sso-poc.iam.gserviceaccount.com"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authz
+  namespace: authz-ns
+  labels:
+    app: authz
+spec:
+  ports:
+  - port: 50051
+    targetPort: 50051
+    name: grpc
+  selector:
+    app: authz
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: authz-sa
+  namespace: authz-ns
+
+
+

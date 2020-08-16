@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: svc1-ns
+  labels:
+    istio-injection: enabled 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc1
+  namespace: svc1-ns
+  labels:
+    app: svc1
+spec:
+  ports:
+  - port: 8080
+    name: http
+  selector:
+    app: svc1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: svc1-sa
+  namespace: svc1-ns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: svc-config
+  namespace: svc1-ns
+data:
+  forward_auth_header: "true"
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: svc1
+  namespace: svc1-ns
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: svc1
+    spec:
+      serviceAccountName: svc1-sa
+      containers:
+      - name: svc1-container
+        image: docker.io/mukeshkhattar/svc1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: FORWARD_AUTH_HEADER
+          valueFrom:
+            configMapKeyRef:
+              name: svc-config
+              key: forward_auth_header

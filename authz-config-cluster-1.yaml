@@ -1,0 +1,43 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: authz-virtualservice
+  namespace: istio-system
+spec:
+  hosts:
+  - authz.authz-ns
+  gateways:
+  - frontend-gateway
+  http:
+  - route:
+    - destination:
+        host: authz.authz-ns.svc.cluster.local
+        subset: cluster-1
+      weight: 100
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: authz-destination
+  namespace: istio-system
+spec:
+  host: authz.authz-ns.svc.cluster.local
+  subsets:
+  - name: cluster-1
+    labels:
+      cluster: cluster-1
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+    outlierDetection:
+      consecutiveErrors: 7
+      interval: 5m
+      baseEjectionTime: 15m

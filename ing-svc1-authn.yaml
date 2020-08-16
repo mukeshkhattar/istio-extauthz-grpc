@@ -1,0 +1,15 @@
+apiVersion: authentication.istio.io/v1alpha1
+kind: Policy
+metadata:
+  name: ing-svc1-authn-policy
+  namespace: svc1-ns
+spec:
+  peers:
+  - mtls: {}
+  origins:
+  - jwt:
+      issuer: ext-authz-server@amex-sso-poc.iam.gserviceaccount.com
+      jwksUri: https://www.googleapis.com/service_accounts/v1/jwk/ext-authz-server@amex-sso-poc.iam.gserviceaccount.com
+  principalBinding: USE_ORIGIN
+  targets:
+  - name: svc1

@@ -1,0 +1,27 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: svc1-virtualservice
+  namespace: istio-system
+spec:
+  hosts:
+  - svc1.example.com
+  gateways:
+  - frontend-gateway
+  http:      
+  - route:
+    - destination:
+        host: svc1.svc1-ns.svc.cluster.local
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: svc1-destination
+  namespace: istio-system
+spec:
+  host: svc1.svc1-ns.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL  
+    loadBalancer:
+      simple: ROUND_ROBIN      
