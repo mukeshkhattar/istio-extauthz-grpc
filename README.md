@@ -1,5 +1,5 @@
 
-# Enforcing Istio External Authorization in Anthos/GKE Cluster
+# Enforcing Istio External Authorization in Anthos/GKE Clusters
 The following section provides sample code of enforcing Istio External Authorization for a service running inside Anthos/GKE cluster, authorization tests and healthchecks for the grpc based authz service:
 
 
